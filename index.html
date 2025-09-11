@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PDF Translator — English → Hindi</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; }
+    .card { border: 1px solid #ddd; padding: 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); }
+    input[type=file] { display:block; margin-bottom: 12px; }
+    button { padding: 10px 16px; border-radius: 6px; border: none; background: #246; color: white; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: default; }
+    #progress { margin-top: 12px; }
+    #downloadLink { display:block; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <h1>PDF Translator — English to Hindi</h1>
+  <div class="card">
+    <p>Select an English PDF file and click <strong>Translate</strong>. You'll get a Hindi PDF to download.</p>
+
+    <input id="fileInput" type="file" accept="application/pdf" />
+    <div>
+      <label>
+        <input id="keepLayout" type="checkbox" checked disabled />
+        Keep original layout (Note: currently this script outputs plain translated text in a new PDF. Layout & images are not preserved.)
+      </label>
+    </div>
+
+    <div style="margin-top:12px;">
+      <button id="translateBtn">Translate & Download</button>
+    </div>
+
+    <div id="progress"></div>
+    <a id="downloadLink" style="display:none" download>Download translated PDF</a>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const btn = document.getElementById('translateBtn');
+    const progress = document.getElementById('progress');
+    const downloadLink = document.getElementById('downloadLink');
+
+    btn.addEventListener('click', async () => {
+      if (!fileInput.files.length) {
+        alert('Please choose a PDF file first.');
+        return;
+      }
+      const file = fileInput.files[0];
+      if (file.type !== 'application/pdf') {
+        alert('Please upload a PDF file.');
+        return;
+      }
+
+      btn.disabled = true;
+      progress.textContent = 'Uploading & translating... (this may take some time)';
+
+      const formData = new FormData();
+      formData.append('pdf', file);
+
+      try {
+        const res = await fetch('/translate', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error('Server error: ' + text);
+        }
+
+        const blob = await res.blob();
+        // create download link
+        const url = URL.createObjectURL(blob);
+        downloadLink.href = url;
+        const suggested = res.headers.get('X-Filename') || 'translated_hindi.pdf';
+        downloadLink.download = suggested;
+        downloadLink.textContent = 'Click here to download: ' + suggested;
+        downloadLink.style.display = 'block';
+        progress.textContent = 'Translation finished.';
+      } catch (err) {
+        console.error(err);
+        progress.textContent = 'Error: ' + err.message;
+        alert('Error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
